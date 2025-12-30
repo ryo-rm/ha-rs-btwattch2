@@ -1,0 +1,50 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "RS-BTWATTCH2 Setup",
+        "description": "Choose setup method",
+        "menu_options": {
+          "auto_discover": "Auto-discover all devices (recommended)",
+          "pick_device": "Select from discovered devices",
+          "manual": "Enter MAC address manually"
+        }
+      },
+      "auto_discover": {
+        "title": "Auto-discover Mode",
+        "description": "Automatically discover all RS-BTWATTCH2 devices in range.\n\nSensors will be added automatically when devices are found."
+      },
+      "pick_device": {
+        "title": "Device Selection",
+        "description": "Select a discovered RS-BTWATTCH2 device",
+        "data": {
+          "address": "Device",
+          "name": "Device Name (optional)"
+        }
+      },
+      "bluetooth_confirm": {
+        "title": "Confirm RS-BTWATTCH2 Setup",
+        "description": "Do you want to set up {name} ({address})?",
+        "data": {
+          "name": "Device Name"
+        }
+      },
+      "manual": {
+        "title": "Manual Configuration",
+        "description": "Enter the MAC address of your RS-BTWATTCH2 device.\n\nFormat: AA:BB:CC:DD:EE:FF or AABBCCDDEEFF",
+        "data": {
+          "address": "MAC Address",
+          "name": "Device Name (optional)"
+        }
+      }
+    },
+    "abort": {
+      "already_configured": "Device is already configured",
+      "no_devices_found": "No RS-BTWATTCH2 devices found.\nTo enter a MAC address manually, go back and select 'Enter MAC address manually'.",
+      "auto_discover_already_configured": "Auto-discover mode is already configured."
+    },
+    "error": {
+      "invalid_mac": "Invalid MAC address format (e.g., AA:BB:CC:DD:EE:FF)"
+    }
+  }
+}

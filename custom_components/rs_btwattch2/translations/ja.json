@@ -1,0 +1,50 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "RS-BTWATTCH2 セットアップ",
+        "description": "セットアップ方法を選択してください",
+        "menu_options": {
+          "auto_discover": "すべてのデバイスを自動検出（推奨）",
+          "pick_device": "検出されたデバイスから選択",
+          "manual": "MACアドレスを手動入力"
+        }
+      },
+      "auto_discover": {
+        "title": "自動検出モード",
+        "description": "範囲内のすべてのRS-BTWATTCH2デバイスを自動的に検出します。\n\nデバイスが見つかると、自動的にセンサーが追加されます。"
+      },
+      "pick_device": {
+        "title": "デバイス選択",
+        "description": "検出されたRS-BTWATTCH2デバイスを選択してください",
+        "data": {
+          "address": "デバイス",
+          "name": "デバイス名（任意）"
+        }
+      },
+      "bluetooth_confirm": {
+        "title": "RS-BTWATTCH2 セットアップの確認",
+        "description": "{name} ({address}) をセットアップしますか？",
+        "data": {
+          "name": "デバイス名"
+        }
+      },
+      "manual": {
+        "title": "手動設定",
+        "description": "RS-BTWATTCH2デバイスのMACアドレスを入力してください。\n\n形式: AA:BB:CC:DD:EE:FF または AABBCCDDEEFF",
+        "data": {
+          "address": "MACアドレス",
+          "name": "デバイス名（任意）"
+        }
+      }
+    },
+    "abort": {
+      "already_configured": "このデバイスは既に設定されています",
+      "no_devices_found": "RS-BTWATTCH2デバイスが見つかりませんでした。\n手動でMACアドレスを入力する場合は、戻って「MACアドレスを手動入力」を選択してください。",
+      "auto_discover_already_configured": "自動検出モードは既に設定されています。"
+    },
+    "error": {
+      "invalid_mac": "MACアドレスの形式が正しくありません（例: AA:BB:CC:DD:EE:FF）"
+    }
+  }
+}
