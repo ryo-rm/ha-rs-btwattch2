@@ -20,13 +20,6 @@ Home Assistant integration for [RATOC Systems RS-BTWATTCH2](https://www.ratocsys
 
 ## Installation
 
-### Install via HACS
-
-1. Open **HACS** in Home Assistant.
-2. Go to **Integrations**.
-3. Click **+ Explore & Download Repositories** and search for **RS-BTWATTCH2**.
-4. Select the integration, download it, and restart Home Assistant.
-
 ### Install via HACS (Custom repositories)
 
 https://hacs.xyz/docs/faq/custom_repositories
