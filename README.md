@@ -2,7 +2,10 @@
 
 Home Assistant integration for [RATOC Systems RS-BTWATTCH2](https://www.ratocsystems.com/products/subpage/btwattch2.html) Bluetooth power monitor.
 
-⚠️ This integration is neither RATOC Systems official nor Home Assistant official. **Use at your own risk.** ⚠️
+⚠️ **Disclaimer** ⚠️
+
+- This integration is neither RATOC Systems official nor Home Assistant official. **Use at your own risk.**
+- Most of the code in this integration was generated with the assistance of AI tools. While efforts have been made to ensure functionality, thorough testing may not have been conducted on all platforms or configurations.
 
 ![HACS Badge](https://img.shields.io/badge/HACS-Custom-orange.svg)
 ## Supported Features
@@ -17,6 +20,14 @@ Home Assistant integration for [RATOC Systems RS-BTWATTCH2](https://www.ratocsys
 
 - Bluetooth adapter on Home Assistant host
 - Home Assistant Bluetooth integration enabled
+
+## Tested Environment
+
+This integration has been tested on:
+- **Hardware**: Raspberry Pi 4
+- **OS**: Home Assistant OS 16.3
+
+Other platforms may work but have not been tested.
 
 ## Installation
 
