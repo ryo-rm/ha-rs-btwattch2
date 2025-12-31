@@ -1,6 +1,8 @@
-"""Constants for RS-BTWATTCH2 integration."""
+"""Constants for RATOC Systems integration."""
 
 from __future__ import annotations
+
+from enum import Enum
 
 from homeassistant.components.sensor import SensorDeviceClass
 from homeassistant.const import (
@@ -9,12 +11,31 @@ from homeassistant.const import (
     UnitOfPower,
 )
 
-DOMAIN = "rs_btwattch2"
+DOMAIN = "ratocsystems"
 
-# RS-BTWATTCH2 Manufacturer ID (0x0B60 = 2912 in decimal)
+# RATOC Systems Manufacturer ID (0x0B60 = 2912 in decimal)
 MANUFACTURER_ID = 0x0B60
 
-# Sensor definitions
+
+class DeviceModel(str, Enum):
+    """Supported device models."""
+
+    BTWATTCH2 = "btwattch2"
+    # Add new models here:
+    # OTHER_DEVICE = "other_device"
+
+
+# Device model configuration
+DEVICE_MODELS: dict[DeviceModel, dict[str, str]] = {
+    DeviceModel.BTWATTCH2: {
+        "name": "RS-BTWATTCH2",
+        "default_name": "RS-BTWATTCH2",
+    },
+    # Add new device configurations here:
+}
+
+
+# Sensor definitions (shared across all models)
 SENSOR_TYPES: dict[str, tuple[str, str | None, SensorDeviceClass | None, str | None]] = {
     "power": ("Power", UnitOfPower.WATT, SensorDeviceClass.POWER, "mdi:flash"),
     "voltage": (
@@ -33,6 +54,3 @@ SENSOR_TYPES: dict[str, tuple[str, str | None, SensorDeviceClass | None, str | N
 
 # Binary sensor for relay state
 RELAY_SENSOR = "relay"
-
-# Default name prefix
-DEFAULT_NAME = "RS-BTWATTCH2"

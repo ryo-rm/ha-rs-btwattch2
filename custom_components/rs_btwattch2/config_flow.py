@@ -14,11 +14,43 @@ from homeassistant.components.bluetooth import (
 from homeassistant.config_entries import ConfigFlow, ConfigFlowResult
 from homeassistant.const import CONF_ADDRESS, CONF_NAME
 
-from .const import DEFAULT_NAME, DOMAIN, MANUFACTURER_ID
+from .const import DEVICE_MODELS, DOMAIN, MANUFACTURER_ID, DeviceModel
 
 _LOGGER = logging.getLogger(__name__)
 
 CONF_AUTO_DISCOVER = "auto_discover"
+
+
+def _get_default_device_name(service_info: BluetoothServiceInfoBleak | None = None) -> str:
+    """Get default device name based on device model.
+
+    Args:
+        service_info: Bluetooth service info to identify device model
+
+    Returns:
+        Default device name
+    """
+    # Try to identify device model
+    device_model: DeviceModel | None = None
+    if service_info:
+        manufacturer_data = service_info.advertisement.manufacturer_data
+        if MANUFACTURER_ID in manufacturer_data:
+            # Identify by device name
+            if service_info.name:
+                name_upper = service_info.name.upper()
+                if "BTWATTCH2" in name_upper:
+                    device_model = DeviceModel.BTWATTCH2
+            # Identify by data length
+            if device_model is None:
+                data = manufacturer_data[MANUFACTURER_ID]
+                if len(data) == 8:
+                    device_model = DeviceModel.BTWATTCH2
+
+    # Use identified model or default to BTWATTCH2
+    if device_model is None:
+        device_model = DeviceModel.BTWATTCH2
+
+    return DEVICE_MODELS[device_model]["default_name"]
 
 
 def format_unique_id(address: str) -> str:
@@ -54,7 +86,8 @@ class BTWATTCH2ConfigFlow(ConfigFlow, domain=DOMAIN):
         self._abort_if_unique_id_configured()
 
         self._discovery_info = discovery_info
-        self.context["title_placeholders"] = {"name": discovery_info.name or DEFAULT_NAME}
+        default_name = _get_default_device_name(discovery_info)
+        self.context["title_placeholders"] = {"name": discovery_info.name or default_name}
 
         return await self.async_step_bluetooth_confirm()
 
@@ -65,7 +98,8 @@ class BTWATTCH2ConfigFlow(ConfigFlow, domain=DOMAIN):
         assert self._discovery_info is not None
 
         if user_input is not None:
-            name = user_input.get(CONF_NAME, self._discovery_info.name or DEFAULT_NAME)
+            default_name = _get_default_device_name(self._discovery_info)
+            name = user_input.get(CONF_NAME, self._discovery_info.name or default_name)
             return self.async_create_entry(
                 title=name,
                 data={
@@ -76,17 +110,18 @@ class BTWATTCH2ConfigFlow(ConfigFlow, domain=DOMAIN):
             )
 
         self._set_confirm_only()
+        default_name = _get_default_device_name(self._discovery_info)
         return self.async_show_form(
             step_id="bluetooth_confirm",
             description_placeholders={
-                "name": self._discovery_info.name or DEFAULT_NAME,
+                "name": self._discovery_info.name or default_name,
                 "address": self._discovery_info.address,
             },
             data_schema=vol.Schema(
                 {
                     vol.Optional(
                         CONF_NAME,
-                        default=self._discovery_info.name or DEFAULT_NAME,
+                        default=self._discovery_info.name or default_name,
                     ): str,
                 }
             ),
@@ -153,7 +188,10 @@ class BTWATTCH2ConfigFlow(ConfigFlow, domain=DOMAIN):
         """Handle picking a discovered device."""
         if user_input is not None:
             address = user_input[CONF_ADDRESS]
-            name = user_input.get(CONF_NAME) or f"{DEFAULT_NAME} {address[-8:]}"
+            # Get device info to identify model
+            service_info = self._discovered_devices.get(address)
+            default_name = _get_default_device_name(service_info)
+            name = user_input.get(CONF_NAME) or f"{default_name} {address[-8:]}"
 
             await self.async_set_unique_id(format_unique_id(address))
             self._abort_if_unique_id_configured()
@@ -180,7 +218,7 @@ class BTWATTCH2ConfigFlow(ConfigFlow, domain=DOMAIN):
 
         # Build list of devices for selection
         device_list = {
-            address: f"{info.name or DEFAULT_NAME} ({address})"
+            address: f"{info.name or _get_default_device_name(info)} ({address})"
             for address, info in self._discovered_devices.items()
         }
 
@@ -200,7 +238,9 @@ class BTWATTCH2ConfigFlow(ConfigFlow, domain=DOMAIN):
 
         if user_input is not None:
             address = normalize_mac_address(user_input[CONF_ADDRESS])
-            name = user_input.get(CONF_NAME) or f"{DEFAULT_NAME} {address[-8:]}"
+            # For manual entry, default to BTWATTCH2
+            default_name = _get_default_device_name()
+            name = user_input.get(CONF_NAME) or f"{default_name} {address[-8:]}"
 
             # Validate MAC address format
             if not self._validate_mac_address(address):

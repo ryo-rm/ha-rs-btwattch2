@@ -17,7 +17,7 @@ from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import Platform
 from homeassistant.core import HomeAssistant, callback
 
-from .const import DOMAIN, MANUFACTURER_ID
+from .const import DOMAIN, MANUFACTURER_ID, DeviceModel
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -37,11 +37,49 @@ class BTWATTCH2Data:
     power: float
 
 
-def parse_manufacturer_data(manufacturer_data: dict[int, bytes]) -> BTWATTCH2Data | None:
-    """Parse RS-BTWATTCH2 manufacturer data.
+def identify_device_model(service_info: BluetoothServiceInfoBleak) -> DeviceModel | None:
+    """Identify device model from Bluetooth service info.
+
+    Args:
+        service_info: Bluetooth service information
+
+    Returns:
+        DeviceModel if identified, None otherwise
+    """
+    # Check manufacturer ID first
+    manufacturer_data = service_info.advertisement.manufacturer_data
+    if MANUFACTURER_ID not in manufacturer_data:
+        return None
+
+    # Method 1: Identify by device name pattern
+    if service_info.name:
+        name_upper = service_info.name.upper()
+        if "BTWATTCH2" in name_upper:
+            return DeviceModel.BTWATTCH2
+        # Add new device name patterns here:
+        # if "OTHER_DEVICE" in name_upper:
+        #     return DeviceModel.OTHER_DEVICE
+
+    # Method 2: Identify by data length/format
+    data = manufacturer_data[MANUFACTURER_ID]
+    if len(data) == 8:
+        return DeviceModel.BTWATTCH2
+    # Add new device data length checks here:
+    # elif len(data) == 10:
+    #     return DeviceModel.OTHER_DEVICE
+
+    return None
+
+
+def parse_manufacturer_data(
+    manufacturer_data: dict[int, bytes],
+    device_model: DeviceModel | None = None,
+) -> BTWATTCH2Data | None:
+    """Parse manufacturer data based on device model.
 
     Args:
         manufacturer_data: Dictionary of manufacturer ID to data bytes
+        device_model: Device model to use for parsing (None for auto-detect)
 
     Returns:
         BTWATTCH2Data if parsing successful, None otherwise
@@ -50,8 +88,36 @@ def parse_manufacturer_data(manufacturer_data: dict[int, bytes]) -> BTWATTCH2Dat
         return None
 
     data = manufacturer_data[MANUFACTURER_ID]
+
+    # Auto-detect device model if not specified
+    if device_model is None:
+        if len(data) == 8:
+            device_model = DeviceModel.BTWATTCH2
+        else:
+            _LOGGER.debug("Unknown data length: %d", len(data))
+            return None
+
+    # Parse based on device model
+    if device_model == DeviceModel.BTWATTCH2:
+        return _parse_btwattch2_data(data)
+    # Add new device parsers here:
+    # elif device_model == DeviceModel.OTHER_DEVICE:
+    #     return _parse_other_device_data(data)
+
+    return None
+
+
+def _parse_btwattch2_data(data: bytes) -> BTWATTCH2Data | None:
+    """Parse RS-BTWATTCH2 manufacturer data.
+
+    Args:
+        data: Manufacturer data bytes
+
+    Returns:
+        BTWATTCH2Data if parsing successful, None otherwise
+    """
     if len(data) != 8:
-        _LOGGER.debug("Invalid data length: %d (expected 8)", len(data))
+        _LOGGER.debug("Invalid BTWATTCH2 data length: %d (expected 8)", len(data))
         return None
 
     try:
@@ -65,7 +131,7 @@ def parse_manufacturer_data(manufacturer_data: dict[int, bytes]) -> BTWATTCH2Dat
             power=power / 1000,
         )
     except struct.error as err:
-        _LOGGER.debug("Failed to parse data: %s", err)
+        _LOGGER.debug("Failed to parse BTWATTCH2 data: %s", err)
         return None
 
 
@@ -183,7 +249,14 @@ class BTWATTCH2Coordinator:
         if not manufacturer_data:
             return
 
-        data = parse_manufacturer_data(manufacturer_data)
+        # Identify device model
+        device_model = identify_device_model(service_info)
+        if device_model is None:
+            _LOGGER.debug("Could not identify device model for %s", address)
+            return
+
+        # Parse data based on device model
+        data = parse_manufacturer_data(manufacturer_data, device_model)
         if data is None:
             return
 
@@ -191,10 +264,15 @@ class BTWATTCH2Coordinator:
             # Auto-discover mode: track multiple devices
             is_new_device = address not in self.devices
             if is_new_device:
-                device_name = service_info.name or f"RS-BTWATTCH2 {address[-8:].upper()}"
+                # Use device model name from config
+                from .const import DEVICE_MODELS
+                model_config = DEVICE_MODELS.get(device_model, {})
+                default_name = model_config.get("default_name", "RATOC Systems Device")
+                device_name = service_info.name or f"{default_name} {address[-8:].upper()}"
                 self.devices[address] = BTWATTCH2DeviceData(address, device_name)
                 _LOGGER.info(
-                    "Discovered new RS-BTWATTCH2 device: %s (%s)",
+                    "Discovered new %s device: %s (%s)",
+                    model_config.get("name", "RATOC Systems"),
                     address,
                     device_name,
                 )
