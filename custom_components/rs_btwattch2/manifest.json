@@ -1,5 +1,5 @@
 {
-  "domain": "rs_btwattch2",
+  "domain": "ratocsystems",
   "name": "RS-BTWATTCH2 Power Monitor",
   "codeowners": [],
   "config_flow": true,
