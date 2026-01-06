@@ -12,6 +12,7 @@ from homeassistant.const import (
 )
 
 DOMAIN = "ratocsystems"
+CONF_DEVICE_MODEL = "device_model"
 
 # RATOC Systems Manufacturer ID (0x0B60 = 2912 in decimal)
 MANUFACTURER_ID = 0x0B60
@@ -21,6 +22,7 @@ class DeviceModel(str, Enum):
     """Supported device models."""
 
     BTWATTCH2 = "btwattch2"
+    BTEVS1 = "btevs1"
     # Add new models here:
     # OTHER_DEVICE = "other_device"
 
@@ -30,6 +32,10 @@ DEVICE_MODELS: dict[DeviceModel, dict[str, str]] = {
     DeviceModel.BTWATTCH2: {
         "name": "RS-BTWATTCH2",
         "default_name": "RS-BTWATTCH2",
+    },
+    DeviceModel.BTEVS1: {
+        "name": "RS-BTEVS1",
+        "default_name": "RS-BTEVS1",
     },
     # Add new device configurations here:
 }

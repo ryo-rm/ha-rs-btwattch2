@@ -1,6 +1,6 @@
 {
   "domain": "ratocsystems",
-  "name": "RS-BTWATTCH2 Power Monitor",
+  "name": "RATOC Systems Bluetooth Devices",
   "codeowners": [],
   "config_flow": true,
   "dependencies": ["bluetooth", "bluetooth_adapters"],

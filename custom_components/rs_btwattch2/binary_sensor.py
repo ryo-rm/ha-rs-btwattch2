@@ -1,4 +1,4 @@
-"""Binary sensor platform for RS-BTWATTCH2."""
+"""Binary sensor platform for RATOC Systems devices."""
 
 from __future__ import annotations
 
@@ -15,7 +15,7 @@ from homeassistant.helpers.device_registry import DeviceInfo
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 
 from . import CONF_AUTO_DISCOVER, BTWATTCH2Coordinator, BTWATTCH2DeviceData
-from .const import DOMAIN
+from .const import DEVICE_MODELS, DOMAIN, DeviceModel
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -39,6 +39,8 @@ async def async_setup_entry(
                 return
             added_devices.add(device.address)
 
+            if device.device_model != DeviceModel.BTWATTCH2:
+                return
             async_add_entities([BTWATTCH2RelaySensorAuto(coordinator, device)])
             _LOGGER.info("Added binary sensor entities for device %s", device.address)
 
@@ -50,7 +52,8 @@ async def async_setup_entry(
         entry.async_on_unload(coordinator.add_new_device_callback(create_entities_for_device))
     else:
         # Single device mode
-        async_add_entities([BTWATTCH2RelaySensor(coordinator, entry)])
+        if coordinator.device_model == DeviceModel.BTWATTCH2:
+            async_add_entities([BTWATTCH2RelaySensor(coordinator, entry)])
 
 
 class BTWATTCH2RelaySensor(BinarySensorEntity):
@@ -73,7 +76,7 @@ class BTWATTCH2RelaySensor(BinarySensorEntity):
             identifiers={(DOMAIN, coordinator.address)},
             name=coordinator.name,
             manufacturer="RATOC Systems",
-            model="RS-BTWATTCH2",
+            model=DEVICE_MODELS[DeviceModel.BTWATTCH2]["name"],
         )
         self._remove_listener: Callable[[], None] | None = None
 
@@ -125,7 +128,7 @@ class BTWATTCH2RelaySensorAuto(BinarySensorEntity):
             identifiers={(DOMAIN, device.address)},
             name=device.name,
             manufacturer="RATOC Systems",
-            model="RS-BTWATTCH2",
+            model=DEVICE_MODELS[DeviceModel.BTWATTCH2]["name"],
         )
         self._remove_listener: Callable[[], None] | None = None
 

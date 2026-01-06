@@ -1,4 +1,4 @@
-"""Config flow for RS-BTWATTCH2 integration."""
+"""Config flow for RATOC Systems integration."""
 
 from __future__ import annotations
 
@@ -14,7 +14,7 @@ from homeassistant.components.bluetooth import (
 from homeassistant.config_entries import ConfigFlow, ConfigFlowResult
 from homeassistant.const import CONF_ADDRESS, CONF_NAME
 
-from .const import DEVICE_MODELS, DOMAIN, MANUFACTURER_ID, DeviceModel
+from .const import CONF_DEVICE_MODEL, DEVICE_MODELS, DOMAIN, MANUFACTURER_ID, DeviceModel
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -33,24 +33,60 @@ def _get_default_device_name(service_info: BluetoothServiceInfoBleak | None = No
     # Try to identify device model
     device_model: DeviceModel | None = None
     if service_info:
-        manufacturer_data = service_info.advertisement.manufacturer_data
+        manufacturer_data = _get_manufacturer_data(service_info)
         if MANUFACTURER_ID in manufacturer_data:
             # Identify by device name
             if service_info.name:
                 name_upper = service_info.name.upper()
                 if "BTWATTCH2" in name_upper:
                     device_model = DeviceModel.BTWATTCH2
+                if "BTEVS1" in name_upper:
+                    device_model = DeviceModel.BTEVS1
             # Identify by data length
             if device_model is None:
                 data = manufacturer_data[MANUFACTURER_ID]
                 if len(data) == 8:
                     device_model = DeviceModel.BTWATTCH2
+                elif len(data) == 9 or len(data) >= 15:
+                    device_model = DeviceModel.BTEVS1
 
     # Use identified model or default to BTWATTCH2
     if device_model is None:
         device_model = DeviceModel.BTWATTCH2
 
     return DEVICE_MODELS[device_model]["default_name"]
+
+
+def _get_device_model_from_service_info(
+    service_info: BluetoothServiceInfoBleak | None,
+) -> DeviceModel | None:
+    """Identify device model from Bluetooth service info."""
+    if service_info is None:
+        return None
+
+    manufacturer_data = _get_manufacturer_data(service_info)
+    if MANUFACTURER_ID not in manufacturer_data:
+        return None
+
+    if service_info.name:
+        name_upper = service_info.name.upper()
+        if "BTWATTCH2" in name_upper:
+            return DeviceModel.BTWATTCH2
+        if "BTEVS1" in name_upper:
+            return DeviceModel.BTEVS1
+
+    data = manufacturer_data[MANUFACTURER_ID]
+    if len(data) == 8:
+        return DeviceModel.BTWATTCH2
+    if len(data) == 9 or len(data) >= 15:
+        return DeviceModel.BTEVS1
+
+    return None
+
+
+def _get_manufacturer_data(service_info: BluetoothServiceInfoBleak) -> dict[int, bytes]:
+    """Return manufacturer data from service info with a safe fallback."""
+    return getattr(service_info, "manufacturer_data", None) or service_info.advertisement.manufacturer_data
 
 
 def format_unique_id(address: str) -> str:
@@ -69,7 +105,7 @@ def normalize_mac_address(address: str) -> str:
 
 
 class BTWATTCH2ConfigFlow(ConfigFlow, domain=DOMAIN):
-    """Handle a config flow for RS-BTWATTCH2."""
+    """Handle a config flow for RATOC Systems devices."""
 
     VERSION = 1
 
@@ -87,6 +123,9 @@ class BTWATTCH2ConfigFlow(ConfigFlow, domain=DOMAIN):
 
         self._discovery_info = discovery_info
         default_name = _get_default_device_name(discovery_info)
+        device_model = _get_device_model_from_service_info(discovery_info)
+        if device_model is not None:
+            self.context["device_model"] = device_model.value
         self.context["title_placeholders"] = {"name": discovery_info.name or default_name}
 
         return await self.async_step_bluetooth_confirm()
@@ -100,12 +139,14 @@ class BTWATTCH2ConfigFlow(ConfigFlow, domain=DOMAIN):
         if user_input is not None:
             default_name = _get_default_device_name(self._discovery_info)
             name = user_input.get(CONF_NAME, self._discovery_info.name or default_name)
+            device_model = _get_device_model_from_service_info(self._discovery_info) or DeviceModel.BTWATTCH2
             return self.async_create_entry(
                 title=name,
                 data={
                     CONF_ADDRESS: self._discovery_info.address,
                     CONF_NAME: name,
                     CONF_AUTO_DISCOVER: False,
+                    CONF_DEVICE_MODEL: device_model.value,
                 },
             )
 
@@ -141,10 +182,10 @@ class BTWATTCH2ConfigFlow(ConfigFlow, domain=DOMAIN):
                     },
                 )
 
-        # Discover RS-BTWATTCH2 devices
+        # Discover RATOC Systems devices
         self._discovered_devices.clear()
         for service_info in async_discovered_service_info(self.hass):
-            if MANUFACTURER_ID in service_info.manufacturer_data:
+            if MANUFACTURER_ID in _get_manufacturer_data(service_info):
                 address = service_info.address
                 if format_unique_id(address) not in self._async_current_ids():
                     self._discovered_devices[address] = service_info
@@ -171,7 +212,7 @@ class BTWATTCH2ConfigFlow(ConfigFlow, domain=DOMAIN):
         if user_input is not None:
             # Create entry for auto-discover mode
             return self.async_create_entry(
-                title="RS-BTWATTCH2 (自動検出)",
+                title="RATOC Systems (自動検出)",
                 data={
                     CONF_AUTO_DISCOVER: True,
                 },
@@ -192,6 +233,7 @@ class BTWATTCH2ConfigFlow(ConfigFlow, domain=DOMAIN):
             service_info = self._discovered_devices.get(address)
             default_name = _get_default_device_name(service_info)
             name = user_input.get(CONF_NAME) or f"{default_name} {address[-8:]}"
+            device_model = _get_device_model_from_service_info(service_info) or DeviceModel.BTWATTCH2
 
             await self.async_set_unique_id(format_unique_id(address))
             self._abort_if_unique_id_configured()
@@ -202,13 +244,14 @@ class BTWATTCH2ConfigFlow(ConfigFlow, domain=DOMAIN):
                     CONF_ADDRESS: address,
                     CONF_NAME: name,
                     CONF_AUTO_DISCOVER: False,
+                    CONF_DEVICE_MODEL: device_model.value,
                 },
             )
 
         # Re-discover devices if needed
         if not self._discovered_devices:
             for service_info in async_discovered_service_info(self.hass):
-                if MANUFACTURER_ID in service_info.manufacturer_data:
+                if MANUFACTURER_ID in _get_manufacturer_data(service_info):
                     address = service_info.address
                     if format_unique_id(address) not in self._async_current_ids():
                         self._discovered_devices[address] = service_info
@@ -238,8 +281,9 @@ class BTWATTCH2ConfigFlow(ConfigFlow, domain=DOMAIN):
 
         if user_input is not None:
             address = normalize_mac_address(user_input[CONF_ADDRESS])
-            # For manual entry, default to BTWATTCH2
-            default_name = _get_default_device_name()
+            device_model_value = user_input.get(CONF_DEVICE_MODEL, DeviceModel.BTWATTCH2.value)
+            device_model = DeviceModel(device_model_value)
+            default_name = DEVICE_MODELS[device_model]["default_name"]
             name = user_input.get(CONF_NAME) or f"{default_name} {address[-8:]}"
 
             # Validate MAC address format
@@ -255,6 +299,7 @@ class BTWATTCH2ConfigFlow(ConfigFlow, domain=DOMAIN):
                         CONF_ADDRESS: address,
                         CONF_NAME: name,
                         CONF_AUTO_DISCOVER: False,
+                        CONF_DEVICE_MODEL: device_model.value,
                     },
                 )
 
@@ -263,6 +308,9 @@ class BTWATTCH2ConfigFlow(ConfigFlow, domain=DOMAIN):
             data_schema=vol.Schema(
                 {
                     vol.Required(CONF_ADDRESS): str,
+                    vol.Required(CONF_DEVICE_MODEL, default=DeviceModel.BTWATTCH2.value): vol.In(
+                        {model.value: config["name"] for model, config in DEVICE_MODELS.items()}
+                    ),
                     vol.Optional(CONF_NAME): str,
                 }
             ),

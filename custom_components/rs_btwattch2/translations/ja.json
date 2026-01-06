@@ -2,7 +2,7 @@
   "config": {
     "step": {
       "user": {
-        "title": "RS-BTWATTCH2 セットアップ",
+        "title": "RATOC Systems セットアップ",
         "description": "セットアップ方法を選択してください",
         "menu_options": {
           "auto_discover": "すべてのデバイスを自動検出（推奨）",
@@ -12,18 +12,18 @@
       },
       "auto_discover": {
         "title": "自動検出モード",
-        "description": "範囲内のすべてのRS-BTWATTCH2デバイスを自動的に検出します。\n\nデバイスが見つかると、自動的にセンサーが追加されます。"
+        "description": "範囲内の対応RATOC Systemsデバイスを自動的に検出します。\n\nデバイスが見つかると、自動的にセンサーが追加されます。"
       },
       "pick_device": {
         "title": "デバイス選択",
-        "description": "検出されたRS-BTWATTCH2デバイスを選択してください",
+        "description": "検出されたRATOC Systemsデバイスを選択してください",
         "data": {
           "address": "デバイス",
           "name": "デバイス名（任意）"
         }
       },
       "bluetooth_confirm": {
-        "title": "RS-BTWATTCH2 セットアップの確認",
+        "title": "セットアップの確認",
         "description": "{name} ({address}) をセットアップしますか？",
         "data": {
           "name": "デバイス名"
@@ -31,16 +31,17 @@
       },
       "manual": {
         "title": "手動設定",
-        "description": "RS-BTWATTCH2デバイスのMACアドレスを入力してください。\n\n形式: AA:BB:CC:DD:EE:FF または AABBCCDDEEFF",
+        "description": "RS-BTWATTCH2 または RS-BTEVS1 デバイスのMACアドレスを入力してください。\n\n形式: AA:BB:CC:DD:EE:FF または AABBCCDDEEFF",
         "data": {
           "address": "MACアドレス",
+          "device_model": "デバイスモデル",
           "name": "デバイス名（任意）"
         }
       }
     },
     "abort": {
       "already_configured": "このデバイスは既に設定されています",
-      "no_devices_found": "RS-BTWATTCH2デバイスが見つかりませんでした。\n手動でMACアドレスを入力する場合は、戻って「MACアドレスを手動入力」を選択してください。",
+      "no_devices_found": "対応デバイスが見つかりませんでした。\n手動でMACアドレスを入力する場合は、戻って「MACアドレスを手動入力」を選択してください。",
       "auto_discover_already_configured": "自動検出モードは既に設定されています。"
     },
     "error": {

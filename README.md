@@ -1,6 +1,9 @@
-# RS-BTWATTCH2 Home Assistant Integration
+# RATOC Systems Home Assistant Integration
 
-Home Assistant integration for [RATOC Systems RS-BTWATTCH2](https://www.ratocsystems.com/products/subpage/btwattch2.html) Bluetooth power monitor.
+Home Assistant integration for RATOC Systems Bluetooth devices, including:
+
+- [RS-BTWATTCH2](https://www.ratocsystems.com/products/subpage/btwattch2.html) Bluetooth power monitor
+- RS-BTEVS1 environmental sensor
 
 ⚠️ **Disclaimer** ⚠️
 
@@ -10,10 +13,8 @@ Home Assistant integration for [RATOC Systems RS-BTWATTCH2](https://www.ratocsys
 ![HACS Badge](https://img.shields.io/badge/HACS-Custom-orange.svg)
 ## Supported Features
 
-- Power consumption (W)
-- Voltage (V)
-- Current (mA)
-- Relay state (ON/OFF) - Read only
+- RS-BTWATTCH2: Power consumption (W), Voltage (V), Current (mA), Relay state (ON/OFF)
+- RS-BTEVS1: CO2, Temperature, Humidity, PM1.0/PM2.5/PM10, TVOC, Battery voltage
 - Auto-discovery of multiple devices
 
 ## Requirements
@@ -67,7 +68,7 @@ Enter the following information in the dialog and click `Add` button.
 
 1. Go to **Settings** → **Devices & Services**
 2. Click **Add Integration**
-3. Search for **RS-BTWATTCH2**
+3. Search for **RATOC Systems Bluetooth Devices**
 4. Choose setup method:
    - **Auto-discover all devices** (recommended) - Automatically detect all devices
    - **Select from discovered devices** - Choose specific device
@@ -96,7 +97,7 @@ Use these entities in dashboards, automations, or energy monitoring as needed.
 ```bash
 # Clone repository
 git clone https://github.com/ryo-rm/ha-rs-btwattch2.git
-cd ha-rs-btwattch2a
+cd ha-rs-btwattch2
 
 # Install dev dependencies
 uv sync --extra dev

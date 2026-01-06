@@ -1,4 +1,4 @@
-"""RS-BTWATTCH2 Bluetooth Power Monitor integration for Home Assistant."""
+"""RATOC Systems Bluetooth devices integration for Home Assistant."""
 
 from __future__ import annotations
 
@@ -17,7 +17,7 @@ from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import Platform
 from homeassistant.core import HomeAssistant, callback
 
-from .const import DOMAIN, MANUFACTURER_ID, DeviceModel
+from .const import CONF_DEVICE_MODEL, DEVICE_MODELS, DOMAIN, MANUFACTURER_ID, DeviceModel
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -37,6 +37,21 @@ class BTWATTCH2Data:
     power: float
 
 
+@dataclass
+class BTEVS1Data:
+    """Data class for RS-BTEVS1 sensor values."""
+
+    co2: int
+    pm1_0: int
+    pm2_5: int
+    pm4_0: int | None
+    temperature: float
+    humidity: int
+    pm10: int
+    tvoc: int | None
+    battery_voltage: float | None
+
+
 def identify_device_model(service_info: BluetoothServiceInfoBleak) -> DeviceModel | None:
     """Identify device model from Bluetooth service info.
 
@@ -47,7 +62,7 @@ def identify_device_model(service_info: BluetoothServiceInfoBleak) -> DeviceMode
         DeviceModel if identified, None otherwise
     """
     # Check manufacturer ID first
-    manufacturer_data = service_info.advertisement.manufacturer_data
+    manufacturer_data = _get_manufacturer_data(service_info)
     if MANUFACTURER_ID not in manufacturer_data:
         return None
 
@@ -56,6 +71,8 @@ def identify_device_model(service_info: BluetoothServiceInfoBleak) -> DeviceMode
         name_upper = service_info.name.upper()
         if "BTWATTCH2" in name_upper:
             return DeviceModel.BTWATTCH2
+        if "BTEVS1" in name_upper:
+            return DeviceModel.BTEVS1
         # Add new device name patterns here:
         # if "OTHER_DEVICE" in name_upper:
         #     return DeviceModel.OTHER_DEVICE
@@ -64,6 +81,8 @@ def identify_device_model(service_info: BluetoothServiceInfoBleak) -> DeviceMode
     data = manufacturer_data[MANUFACTURER_ID]
     if len(data) == 8:
         return DeviceModel.BTWATTCH2
+    if len(data) == 9 or len(data) >= 15:
+        return DeviceModel.BTEVS1
     # Add new device data length checks here:
     # elif len(data) == 10:
     #     return DeviceModel.OTHER_DEVICE
@@ -71,10 +90,15 @@ def identify_device_model(service_info: BluetoothServiceInfoBleak) -> DeviceMode
     return None
 
 
+def _get_manufacturer_data(service_info: BluetoothServiceInfoBleak) -> dict[int, bytes]:
+    """Return manufacturer data from service info with a safe fallback."""
+    return getattr(service_info, "manufacturer_data", None) or service_info.advertisement.manufacturer_data
+
+
 def parse_manufacturer_data(
     manufacturer_data: dict[int, bytes],
     device_model: DeviceModel | None = None,
-) -> BTWATTCH2Data | None:
+) -> BTWATTCH2Data | BTEVS1Data | None:
     """Parse manufacturer data based on device model.
 
     Args:
@@ -82,7 +106,7 @@ def parse_manufacturer_data(
         device_model: Device model to use for parsing (None for auto-detect)
 
     Returns:
-        BTWATTCH2Data if parsing successful, None otherwise
+        Parsed data if successful, None otherwise
     """
     if MANUFACTURER_ID not in manufacturer_data:
         return None
@@ -93,6 +117,8 @@ def parse_manufacturer_data(
     if device_model is None:
         if len(data) == 8:
             device_model = DeviceModel.BTWATTCH2
+        elif len(data) == 9 or len(data) >= 15:
+            device_model = DeviceModel.BTEVS1
         else:
             _LOGGER.debug("Unknown data length: %d", len(data))
             return None
@@ -100,6 +126,8 @@ def parse_manufacturer_data(
     # Parse based on device model
     if device_model == DeviceModel.BTWATTCH2:
         return _parse_btwattch2_data(data)
+    if device_model == DeviceModel.BTEVS1:
+        return _parse_btevs1_data(data)
     # Add new device parsers here:
     # elif device_model == DeviceModel.OTHER_DEVICE:
     #     return _parse_other_device_data(data)
@@ -135,14 +163,75 @@ def _parse_btwattch2_data(data: bytes) -> BTWATTCH2Data | None:
         return None
 
 
+def _parse_btevs1_data(data: bytes) -> BTEVS1Data | None:
+    """Parse RS-BTEVS1 manufacturer data.
+
+    Args:
+        data: Manufacturer data bytes
+
+    Returns:
+        BTEVS1Data if parsing successful, None otherwise
+    """
+    if len(data) not in (9,) and len(data) < 15:
+        _LOGGER.debug("Invalid BTEVS1 data length: %d (expected 9 or >= 15)", len(data))
+        return None
+
+    try:
+        if len(data) == 9:
+            co2 = struct.unpack("<H", data[0:2])[0]
+            pm1_0 = data[2]
+            pm2_5 = data[3]
+            pm4_0 = data[4]
+            pm10 = data[5]
+            temperature_raw = struct.unpack("<h", data[6:8])[0]
+            humidity = data[8]
+
+            return BTEVS1Data(
+                co2=co2,
+                pm1_0=pm1_0,
+                pm2_5=pm2_5,
+                pm4_0=pm4_0,
+                temperature=temperature_raw / 10,
+                humidity=humidity,
+                pm10=pm10,
+                tvoc=None,
+                battery_voltage=None,
+            )
+
+        co2 = struct.unpack("<H", data[0:2])[0]
+        pm1_0 = struct.unpack("<H", data[2:4])[0]
+        pm2_5 = struct.unpack("<H", data[4:6])[0]
+        temperature_raw = struct.unpack("<H", data[6:8])[0]
+        humidity = data[8]
+        pm10 = struct.unpack("<H", data[9:11])[0]
+        tvoc = struct.unpack("<H", data[11:13])[0]
+        battery_raw = struct.unpack("<H", data[13:15])[0]
+
+        return BTEVS1Data(
+            co2=co2,
+            pm1_0=pm1_0,
+            pm2_5=pm2_5,
+            pm4_0=None,
+            temperature=temperature_raw / 10,
+            humidity=humidity,
+            pm10=pm10,
+            tvoc=tvoc,
+            battery_voltage=battery_raw / 100,
+        )
+    except struct.error as err:
+        _LOGGER.debug("Failed to parse BTEVS1 data: %s", err)
+        return None
+
+
 class BTWATTCH2DeviceData:
     """Data holder for a single device."""
 
-    def __init__(self, address: str, name: str) -> None:
+    def __init__(self, address: str, name: str, device_model: DeviceModel) -> None:
         """Initialize device data."""
         self.address = address
         self.name = name
-        self.data: BTWATTCH2Data | None = None
+        self.device_model = device_model
+        self.data: BTWATTCH2Data | BTEVS1Data | None = None
         self._listeners: list[Callable[[], None]] = []
 
     def add_listener(self, update_callback: Callable[[], None]) -> Callable[[], None]:
@@ -172,6 +261,7 @@ class BTWATTCH2Coordinator:
         address: str | None = None,
         name: str | None = None,
         auto_discover: bool = False,
+        device_model: DeviceModel | None = None,
     ) -> None:
         """Initialize the coordinator.
 
@@ -187,9 +277,10 @@ class BTWATTCH2Coordinator:
         self.address = address
         self.name = name
         self.auto_discover = auto_discover
+        self.device_model = device_model
 
         # For single device mode
-        self.data: BTWATTCH2Data | None = None
+        self.data: BTWATTCH2Data | BTEVS1Data | None = None
         self._listeners: list[Callable[[], None]] = []
 
         # For auto-discover mode: track multiple devices
@@ -245,31 +336,40 @@ class BTWATTCH2Coordinator:
             if self.address and address != self.address.lower():
                 return
 
-        manufacturer_data = service_info.advertisement.manufacturer_data
+        manufacturer_data = _get_manufacturer_data(service_info)
         if not manufacturer_data:
-            return
-
-        # Identify device model
-        device_model = identify_device_model(service_info)
-        if device_model is None:
-            _LOGGER.debug("Could not identify device model for %s", address)
-            return
-
-        # Parse data based on device model
-        data = parse_manufacturer_data(manufacturer_data, device_model)
-        if data is None:
             return
 
         if self.auto_discover:
             # Auto-discover mode: track multiple devices
             is_new_device = address not in self.devices
+            
+            # Identify device model
+            # For existing devices, try to use default model if identification fails
+            device_model = identify_device_model(service_info)
+            if device_model is None:
+                if is_new_device:
+                    # For new devices, we need to identify the model
+                    _LOGGER.debug("Could not identify device model for %s", address)
+                    return
+                else:
+                    device_model = self.devices[address].device_model
+                    _LOGGER.debug(
+                        "Could not identify device model for existing device %s, using stored model %s",
+                        address,
+                        device_model.value,
+                    )
+
+            # Parse data based on device model
+            data = parse_manufacturer_data(manufacturer_data, device_model)
+            if data is None:
+                return
+
             if is_new_device:
-                # Use device model name from config
-                from .const import DEVICE_MODELS
                 model_config = DEVICE_MODELS.get(device_model, {})
                 default_name = model_config.get("default_name", "RATOC Systems Device")
                 device_name = service_info.name or f"{default_name} {address[-8:].upper()}"
-                self.devices[address] = BTWATTCH2DeviceData(address, device_name)
+                self.devices[address] = BTWATTCH2DeviceData(address, device_name, device_model)
                 _LOGGER.info(
                     "Discovered new %s device: %s (%s)",
                     model_config.get("name", "RATOC Systems"),
@@ -278,14 +378,23 @@ class BTWATTCH2Coordinator:
                 )
 
             self.devices[address].update(data)
-            _LOGGER.debug(
-                "Updated data for %s: relay=%s, voltage=%.1fV, current=%dmA, power=%.3fW",
-                address,
-                data.relay,
-                data.voltage,
-                data.current,
-                data.power,
-            )
+            if isinstance(data, BTWATTCH2Data):
+                _LOGGER.debug(
+                    "Updated data for %s: relay=%s, voltage=%.1fV, current=%dmA, power=%.3fW",
+                    address,
+                    data.relay,
+                    data.voltage,
+                    data.current,
+                    data.power,
+                )
+            elif isinstance(data, BTEVS1Data):
+                _LOGGER.debug(
+                    "Updated data for %s: co2=%dppm, temperature=%.1fC, humidity=%d%%",
+                    address,
+                    data.co2,
+                    data.temperature,
+                    data.humidity,
+                )
 
             # Notify about new device after updating data
             if is_new_device:
@@ -293,15 +402,34 @@ class BTWATTCH2Coordinator:
                     cb(self.devices[address])
         else:
             # Single device mode
+            device_model = self.device_model or identify_device_model(service_info)
+            if device_model is None:
+                device_model = DeviceModel.BTWATTCH2
+                _LOGGER.debug("Could not identify device model for %s, using default", address)
+
+            # Parse data based on device model
+            data = parse_manufacturer_data(manufacturer_data, device_model)
+            if data is None:
+                return
+
             self.data = data
-            _LOGGER.debug(
-                "Updated data for %s: relay=%s, voltage=%.1fV, current=%dmA, power=%.3fW",
-                self.address,
-                data.relay,
-                data.voltage,
-                data.current,
-                data.power,
-            )
+            if isinstance(data, BTWATTCH2Data):
+                _LOGGER.debug(
+                    "Updated data for %s: relay=%s, voltage=%.1fV, current=%dmA, power=%.3fW",
+                    self.address,
+                    data.relay,
+                    data.voltage,
+                    data.current,
+                    data.power,
+                )
+            elif isinstance(data, BTEVS1Data):
+                _LOGGER.debug(
+                    "Updated data for %s: co2=%dppm, temperature=%.1fC, humidity=%d%%",
+                    self.address,
+                    data.co2,
+                    data.temperature,
+                    data.humidity,
+                )
             self._notify_listeners()
 
     def start(self) -> None:
@@ -329,8 +457,17 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     else:
         # Single device mode
         address = entry.data["address"]
-        name = entry.data.get("name", f"RS-BTWATTCH2 {address[-8:]}")
-        coordinator = BTWATTCH2Coordinator(hass, entry, address=address, name=name)
+        device_model_value = entry.data.get(CONF_DEVICE_MODEL, DeviceModel.BTWATTCH2.value)
+        device_model = DeviceModel(device_model_value)
+        default_name = DEVICE_MODELS[device_model]["default_name"]
+        name = entry.data.get("name", f"{default_name} {address[-8:]}")
+        coordinator = BTWATTCH2Coordinator(
+            hass,
+            entry,
+            address=address,
+            name=name,
+            device_model=device_model,
+        )
 
     coordinator.start()
 
