@@ -123,21 +123,6 @@ SENSOR_DEFINITIONS: dict[DeviceModel, list[RatocSensorDefinition]] = {
             unit=CONCENTRATION_MICROGRAMS_PER_CUBIC_METER,
             icon="mdi:blur",
         ),
-        RatocSensorDefinition(
-            key="tvoc",
-            name="TVOC",
-            device_class=VOC_DEVICE_CLASS,
-            unit=CONCENTRATION_PARTS_PER_BILLION,
-            icon="mdi:chemical-weapon",
-        ),
-        RatocSensorDefinition(
-            key="battery_voltage",
-            name="Battery Voltage",
-            device_class=SensorDeviceClass.VOLTAGE,
-            unit=UnitOfElectricPotential.VOLT,
-            icon="mdi:battery",
-            precision=2,
-        ),
     ],
 }
 

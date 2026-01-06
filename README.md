@@ -14,7 +14,7 @@ Home Assistant integration for RATOC Systems Bluetooth devices, including:
 ## Supported Features
 
 - RS-BTWATTCH2: Power consumption (W), Voltage (V), Current (mA), Relay state (ON/OFF)
-- RS-BTEVS1: CO2, Temperature, Humidity, PM1.0/PM2.5/PM10, TVOC, Battery voltage
+- RS-BTEVS1: CO2, Temperature, Humidity, PM1.0/PM2.5/PM4.0/PM10.0
 - Auto-discovery of multiple devices
 
 ## Requirements
